@@ -1,18 +1,36 @@
 from rcps_el import rcpsELEvaluator
-from rcps_el.dataset import bioIDBenchmark, bioRedBenchmark, BCD5, Dataset
-from rcps_el.scores import fuzzyStringScore, gildaScorer, sapbertScorer, krissbertScorer, llmScorer, Scorer
+from rcps_el.dataset import (
+    bioIDBenchmark,
+    bioRedBenchmark,
+    BCD5,
+    medCodERBenchmark,
+    Dataset,
+)
+from rcps_el.scores import (
+    fuzzyStringScore,
+    gildaScorer,
+    sapbertScorer,
+    krissbertScorer,
+    llmScorer,
+    MedCodErScorer,
+    Scorer,
+)
 from rcps_el.losses import binaryMisscoverageLoss, hitsAtK, lossFunction
+
 # from rcps_el.dataset.bioIDGilda import bioIDGildaBenchmark
 
 
 from itertools import product
-from tqdm import tqdm 
+from tqdm import tqdm
 import os
 import polars as pl
 
-BENCHMARKS: list[Dataset] = [BCD5(), bioIDBenchmark(), bioRedBenchmark()]
+# BENCHMARKS: list[Dataset] = [BCD5(), bioIDBenchmark(), bioRedBenchmark()]
+BENCHMARKS: list[Dataset] = [medCodERBenchmark()]
 
-SCORES: list[Scorer] = [fuzzyStringScore(), gildaScorer(), sapbertScorer()]
+SCORES: list[Scorer] = [MedCodErScorer()]
+# SCORES: list[Scorer] = [fuzzyStringScore(), gildaScorer(), sapbertScorer()]
+
 # SCORES: list[Scorer] = [llmScorer(batch_size=1)]
 # SCORES: list[Scorer] = [krissbertScorer()]
 # LOSSES: list[lossFunction] = [binaryMisscoverageLoss(), hitsAtK(k_size=1)]
@@ -23,7 +41,9 @@ TARGET_PROPORTIONAL_RISKS = [0.00, 0.01, 0.02, 0.05, 0.10, 0.20, 0.25]
 
 
 RISK_TYPES = [False]
-LOSSES: list[lossFunction] = [hitsAtK(k_size=1), hitsAtK(k_size=2), hitsAtK(k_size=5), hitsAtK(k_size=10)]
+LOSSES: list[lossFunction] = [hitsAtK(k_size=5)]
+
+# LOSSES: list[lossFunction] = [hitsAtK(k_size=1), hitsAtK(k_size=2), hitsAtK(k_size=5), hitsAtK(k_size=10)]
 # LOSSES: list[lossFunction] = [binaryMisscoverageLoss()]
 # SCORES: list[Scorer] = [fuzzyStringScore(), sapbertScorer(), gildaScorer()]
 # SCORES: list[Scorer] = [llmScorer(batch_size=1)]
@@ -31,11 +51,9 @@ LOSSES: list[lossFunction] = [hitsAtK(k_size=1), hitsAtK(k_size=2), hitsAtK(k_si
 # BENCHMARKS: list[Dataset] = [bioIDBenchmark(method='gilda')]
 # BENCHMARKS: list[Dataset] = [bioIDBenchmark(method='gilda')]
 # BENCHMARKS: list[Dataset] = [BCD5(method='gilda')]
-BENCHMARKS: list[Dataset] = [BCD5(method='krissbert')]
+# BENCHMARKS: list[Dataset] = [BCD5(method='krissbert')]
 # SCORES : list[Scorer] = [fuzzyStringScore(), sapbertScorer(), llmScorer()]
-MIN_CANDIDATES = [
-    2
-]
+MIN_CANDIDATES = [2]
 
 
 if __name__ == "__main__":

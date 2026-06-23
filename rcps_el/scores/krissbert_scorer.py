@@ -1,5 +1,5 @@
 """
-Gilda scorer class
+Krissbert scorer class
 """
 
 from .scorer import Scorer, pl
