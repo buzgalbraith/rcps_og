@@ -1,5 +1,11 @@
 from .rcpsELEvaluator import rcpsELEvaluator
+from rcps_el.losses import lossFunction
+from rcps_el.dataset import Dataset
+from rcps_el.scores import Scorer
+
 import polars as pl
+
+from itertools import product
 from tqdm import tqdm
 from pathlib import Path
 import os
@@ -25,9 +31,30 @@ class rcpsELSetEvaluator:
     ]
 
     def __init__(
-        self, evaluators: list[rcpsELEvaluator], results_path: Path | None = None
+        self,
+        benchmarks: list[Dataset],
+        scores: list[Scorer],
+        losses: list[lossFunction],
+        results_path: Path,
+        target_proportion_risk: list[float] = [
+            0.00,
+            0.01,
+            0.02,
+            0.05,
+            0.10,
+            0.20,
+            0.25,
+        ],
+        risk_types: list[bool] = [False],
+        min_candidates: list[int] = [2],
     ) -> None:
-        self.evaluators = evaluators
+        self.evaluators: list[rcpsELEvaluator] = []
+        self.benchmarks = benchmarks
+        self.scores = scores
+        self.losses = losses
+        self.risk_types = risk_types
+        self.min_candidates = min_candidates
+        self.target_proportion_risk = target_proportion_risk
         self.result_set: pl.DataFrame | None = None
         self.results_path = (
             results_path if isinstance(results_path, Path) else Path(DEFAULT_RESULT)
@@ -35,17 +62,49 @@ class rcpsELSetEvaluator:
         os.makedirs(self.results_path.parent, exist_ok=True)
 
     def execute(self, verbose: bool = False):
+        itter = product(
+            self.benchmarks,
+            self.scores,
+            self.losses,
+            self.risk_types,
+            self.min_candidates,
+            self.target_proportion_risk,
+        )
+        total = (
+            len(self.benchmarks)
+            * len(self.scores)
+            * len(self.losses)
+            * len(self.risk_types)
+            * len(self.min_candidates)
+            * len(self.target_proportion_risk)
+        )
         records = []
-        for evaluator in tqdm(
-            self.evaluators,
-            total=len(self.evaluators),
-            desc="Running evaluations with different configurations",
-            unit="configuration",
-        ):
+        progress = tqdm(
+            itter,
+            total=total,
+            desc="Evaluating RCPS entity-linking configurations",
+            unit="config",
+        )
+        for dataset, score, loss, risk_type, min_candidate, target_risk in progress:
+            progress.set_postfix_str(
+                f"data={dataset.name} score={score.name} loss={loss.name} "
+                f"risk={'abs' if risk_type else 'prop'} "
+                f"min_cand={min_candidate} target_risk={target_risk}"
+            )
+            evaluator = rcpsELEvaluator(
+                dataset=dataset,
+                score_function=score,
+                loss_function=loss,
+                min_candidates=min_candidate,
+                absolute_risk=risk_type,
+                target_proportional_risk_increase=target_risk,
+            )
             evaluator.execute(verbose=verbose)
+            self.evaluators.append(evaluator)
             records += evaluator.results_summary
-        self.result_set = pl.from_dicts(records)
-        self.safe_write_results()
+            ## cache after every trial ##
+            self.result_set = pl.from_dicts(records)
+            self.safe_write_results()
 
     def safe_write_results(self):
         assert isinstance(self.result_set, pl.DataFrame)
